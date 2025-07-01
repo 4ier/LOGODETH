@@ -6,6 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const previewArea = document.getElementById('previewArea');
     const previewImage = document.getElementById('previewImage');
     const analyzeBtn = document.getElementById('analyzeBtn');
+    const chooseFileBtn = document.getElementById('chooseFileBtn');
+    const chooseAnotherBtn = document.getElementById('chooseAnotherBtn');
     const resultsSection = document.getElementById('resultsSection');
     const resultsContainer = document.getElementById('resultsContainer');
 
@@ -37,7 +39,10 @@ document.addEventListener('DOMContentLoaded', function() {
     uploadArea.addEventListener('dragover', handleDragOver);
     uploadArea.addEventListener('dragleave', handleDragLeave);
     uploadArea.addEventListener('drop', handleDrop);
-    uploadArea.addEventListener('click', () => fileInput.click());
+
+    // File selection buttons
+    chooseFileBtn.addEventListener('click', () => fileInput.click());
+    chooseAnotherBtn.addEventListener('click', showUploadArea);
 
     // File input change
     fileInput.addEventListener('change', handleFileSelect);
@@ -94,6 +99,15 @@ document.addEventListener('DOMContentLoaded', function() {
             resultsSection.style.display = 'none';
         };
         reader.readAsDataURL(file);
+    }
+
+    function showUploadArea() {
+        // Reset file input
+        fileInput.value = '';
+        // Show upload area and hide preview
+        uploadArea.style.display = 'block';
+        previewArea.style.display = 'none';
+        resultsSection.style.display = 'none';
     }
 
     function analyzeImage() {

@@ -47,6 +47,12 @@ python3 -m http.server 8000
 # Install dependencies
 pip install -r requirements.txt
 
+# Run the web scraper to collect logos
+python scraper/metal_archives_scraper.py
+
+# Process and embed logo images
+python processing/logo_processor.py
+
 # Run the web app
 python app.py
 
@@ -59,16 +65,22 @@ python gradio_ui.py
 ## How It Works
 
 1. **Data Collection**:  
-   Crawls hundreds of band logos from Metal Archives and other sources.
+   Crawls thousands of band logos from Metal Archives using intelligent web scraping.
 
-2. **Feature Extraction**:  
-   Uses [CLIP](https://github.com/openai/CLIP) to embed logo images into vector space.
+2. **Image Processing**:  
+   Preprocesses logo images, handles various formats and sizes.
 
-3. **Similarity Search**:  
-   Computes cosine similarity against a precomputed logo vector database.
+3. **Feature Extraction**:  
+   Uses [CLIP](https://github.com/openai/CLIP) to embed logo images into high-dimensional vector space.
 
-4. **Result**:  
-   Returns top matching band names with confidence scores.
+4. **Vector Database**:  
+   Stores embeddings in optimized vector database for fast similarity search.
+
+5. **Similarity Search**:  
+   Computes cosine similarity against precomputed logo vector database.
+
+6. **Result Ranking**:  
+   Returns top matching band names with confidence scores and metadata.
 
 ---
 
@@ -76,7 +88,7 @@ python gradio_ui.py
 
 - **Dark Metal-Themed UI**: Brutal aesthetic with blood-red accents
 - **Drag & Drop Upload**: Easy image uploading with preview
-- **Mock Recognition**: Simulates logo analysis with realistic results
+- **Mock Recognition**: Simulates logo analysis with realistic results (temporary)
 - **Responsive Design**: Works on desktop and mobile
 - **Interactive Effects**: Hover animations and visual feedback
 - **Easter Eggs**: Hidden brutal mode (try the Konami code)
@@ -87,55 +99,164 @@ python gradio_ui.py
 
 ```
 logodeth/
-├── index.html          # Main webpage
-├── styles.css          # Dark metal-themed styling
-├── script.js           # Frontend JavaScript functionality
-├── README.md           # This file
-├── requirements.txt    # Python dependencies (for future backend)
-├── app.py             # Flask backend (future implementation)
-└── gradio_ui.py       # Gradio interface (future implementation)
+├── index.html              # Main webpage
+├── styles.css              # Dark metal-themed styling
+├── script.js               # Frontend JavaScript functionality
+├── README.md               # This file
+├── requirements.txt        # Python dependencies
+├── scraper/
+│   ├── metal_archives_scraper.py    # Main scraper for Metal Archives
+│   ├── logo_downloader.py           # Image download utilities
+│   ├── rate_limiter.py              # Respectful scraping rate limiting
+│   └── data_validator.py            # Data quality validation
+├── processing/
+│   ├── logo_processor.py            # Image preprocessing pipeline
+│   ├── clip_embedder.py             # CLIP-based feature extraction
+│   └── vector_db.py                 # Vector database operations
+├── backend/
+│   ├── app.py                       # Flask/FastAPI main server
+│   ├── api_routes.py                # API endpoint definitions
+│   └── logo_matcher.py              # Core matching algorithm
+├── data/
+│   ├── raw_logos/                   # Downloaded logo images
+│   ├── processed_logos/             # Preprocessed images
+│   ├── embeddings/                  # CLIP embeddings
+│   └── metadata.json               # Band metadata
+└── tests/
+    ├── test_scraper.py
+    ├── test_processor.py
+    └── test_matcher.py
 ```
 
 ---
 
-## Roadmap
+## Development Roadmap
 
+### Phase 1: Data Collection & Infrastructure (Week 1-2)
 * [x] Build dark metal-themed web interface
 * [x] Add drag & drop image upload
 * [x] Create mock logo recognition system
-* [ ] Add logo crawler from Metal Archives
-* [ ] Implement CLIP-based image recognition
-* [ ] Build Python Flask/FastAPI backend
-* [ ] Add Spotify/Apple Music links to matched bands
-* [ ] Offline CLI version
-* [ ] Support top-N recommendation + fuzzy matching
-* [ ] Deploy to HuggingFace Spaces or Vercel
+* [ ] **Implement Metal Archives scraper**
+  - [ ] Band listing crawler
+  - [ ] Logo image downloader
+  - [ ] Metadata extraction (genre, country, year)
+  - [ ] Rate limiting and respectful scraping
+  - [ ] Error handling and retry logic
+* [ ] **Data validation and cleaning**
+  - [ ] Image format standardization
+  - [ ] Duplicate detection and removal
+  - [ ] Quality filtering (resolution, corruption)
+
+### Phase 2: Image Processing & AI Pipeline (Week 3-4)
+* [ ] **Image preprocessing pipeline**
+  - [ ] Resize and normalize images
+  - [ ] Background removal/standardization
+  - [ ] Augmentation for training data
+* [ ] **CLIP integration**
+  - [ ] Batch embedding generation
+  - [ ] Embedding optimization and compression
+  - [ ] Performance benchmarking
+* [ ] **Vector database setup**
+  - [ ] Choose optimal vector DB (Pinecone/Weaviate/Chroma)
+  - [ ] Index optimization for similarity search
+  - [ ] Backup and versioning system
+
+### Phase 3: Backend Development (Week 5-6)
+* [ ] **API development**
+  - [ ] Flask/FastAPI server setup
+  - [ ] Image upload and processing endpoints
+  - [ ] Logo matching and ranking API
+  - [ ] Batch processing capabilities
+* [ ] **Core matching algorithm**
+  - [ ] Similarity computation optimization
+  - [ ] Multi-stage filtering (genre, year, etc.)
+  - [ ] Confidence score calibration
+  - [ ] Top-N recommendation system
+
+### Phase 4: Frontend Integration & Testing (Week 7-8)
+* [ ] **Frontend-backend integration**
+  - [ ] Replace mock data with real API calls
+  - [ ] Real-time processing indicators
+  - [ ] Error handling and user feedback
+* [ ] **Advanced features**
+  - [ ] Batch logo recognition
+  - [ ] Search history and favorites
+  - [ ] Band information integration
+  - [ ] Spotify/Apple Music links
+* [ ] **Testing and optimization**
+  - [ ] Unit tests for all components
+  - [ ] Integration testing
+  - [ ] Performance optimization
+  - [ ] User acceptance testing
+
+### Phase 5: Deployment & Scaling (Week 9-10)
+* [ ] **Production deployment**
+  - [ ] Containerization (Docker)
+  - [ ] Cloud deployment (AWS/GCP/Azure)
+  - [ ] CDN setup for image serving
+  - [ ] Monitoring and logging
+* [ ] **Additional features**
+  - [ ] Mobile app version
+  - [ ] Chrome extension
+  - [ ] Offline CLI version
+  - [ ] API documentation and public access
 
 ---
 
-## Technical Details
+## Technical Implementation Details
 
-### Frontend
-- **HTML5**: Semantic markup with accessibility features
-- **CSS3**: Advanced animations, gradients, and responsive design
-- **JavaScript**: ES6+ with modern APIs (FileReader, Intersection Observer)
-- **Fonts**: Google Fonts (Metal Mania, Creepster) for authentic metal aesthetic
+### Web Scraping Strategy
+- **Target**: Metal Archives (https://www.metal-archives.com/)
+- **Approach**: Respectful scraping with rate limiting
+- **Data Points**: Band name, logo image, genre, country, formation year
+- **Estimated Dataset**: 50,000+ band logos
+- **Storage**: Local filesystem + metadata JSON
 
-### Backend (Planned)
-- **Python**: Flask/FastAPI for API endpoints
-- **CLIP**: OpenAI's vision model for image embeddings
-- **Vector Database**: For fast similarity search
-- **Web Scraping**: BeautifulSoup for Metal Archives data
+### AI Pipeline
+- **Model**: OpenAI CLIP (ViT-B/32 or ViT-L/14)
+- **Preprocessing**: 224x224 RGB normalization
+- **Embeddings**: 512/768-dimensional vectors
+- **Similarity**: Cosine similarity with optimized search
+- **Database**: Vector database with metadata filtering
+
+### Backend Architecture
+- **Framework**: FastAPI for high performance
+- **Database**: PostgreSQL + pgvector for embeddings
+- **Caching**: Redis for frequent queries
+- **Queue**: Celery for background processing
+- **Storage**: S3-compatible object storage
 
 ---
 
-## Demo Bands Database
+## Data Collection Ethics
+
+- **Respectful Scraping**: Implements proper rate limiting (1-2 requests/second)
+- **Terms Compliance**: Follows Metal Archives' terms of service
+- **Attribution**: Credits data sources appropriately
+- **Fair Use**: Educational/research purposes, non-commercial
+- **Opt-out**: Respects robots.txt and removal requests
+
+---
+
+## Performance Targets
+
+- **Dataset Size**: 50,000+ band logos
+- **Query Speed**: <500ms for similarity search
+- **Accuracy**: >85% top-3 matching accuracy
+- **Throughput**: 100+ concurrent users
+- **Uptime**: 99.9% availability
+
+---
+
+## Demo Bands Database (Current Mock Data)
 
 The current mock implementation includes logos from:
 
 **Death Metal**: Disentomb, Defeated Sanity, Visceral Disgorge, Cryptopsy, Dying Fetus, Cannibal Corpse, Bloodbath, Suffocation, Necrophagist, Gorguts
 
 **Black Metal**: Mayhem, Darkthrone, Emperor, Burzum, Immortal, Bathory, Gorgoroth, Marduk, Watain, Behemoth
+
+*Note: This will be replaced with real scraped data from Metal Archives.*
 
 ---
 
@@ -151,6 +272,7 @@ Deploy to any static hosting service:
 - **Backend**: Railway, Heroku, or DigitalOcean
 - **Frontend**: Vercel or Netlify
 - **Database**: PostgreSQL with pgvector for embeddings
+- **Storage**: AWS S3 or Google Cloud Storage
 
 ---
 
@@ -158,7 +280,7 @@ Deploy to any static hosting service:
 
 * Inspired by every unreadable band shirt ever.
 * Powered by [OpenAI CLIP](https://github.com/openai/CLIP)
-* Logo dataset: scraped from Metal Archives, Last.fm, and other underground havens.
+* Logo dataset: scraped from [Metal Archives](https://www.metal-archives.com/)
 * Fonts: Google Fonts (Metal Mania, Creepster)
 
 ---
@@ -183,10 +305,61 @@ Want to make LOGODETH more brutal?
 5. Open a Pull Request
 
 ### Ideas for Contributions:
-- Add more metal bands to the database
-- Implement actual CLIP-based recognition
-- Improve the UI/UX
-- Add sound effects
-- Create mobile app version
-- Build Chrome extension for logo recognition on any website
+- Improve the Metal Archives scraper
+- Implement additional data sources
+- Optimize CLIP embedding pipeline
+- Enhance the matching algorithm
+- Add mobile app version
+- Create Chrome extension for logo recognition on any website
+- Implement band information integration
+- Add sound effects and brutal animations
+
+---
+
+## Development Setup
+
+### Prerequisites
+- Python 3.8+
+- Node.js 16+ (for frontend build tools)
+- Git
+
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/your-username/logodeth.git
+cd logodeth
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Install development dependencies
+pip install -r requirements-dev.txt
+```
+
+### Running Tests
+```bash
+# Run all tests
+pytest
+
+# Run specific test suite
+pytest tests/test_scraper.py
+pytest tests/test_processor.py
+pytest tests/test_matcher.py
+
+# Run with coverage
+pytest --cov=.
+```
+
+### Environment Variables
+Create a `.env` file with:
+```
+METAL_ARCHIVES_DELAY=1.5
+CLIP_MODEL=ViT-B/32
+VECTOR_DB_URL=your_vector_db_url
+API_SECRET_KEY=your_secret_key
+```
 
