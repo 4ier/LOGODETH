@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGODETH 🤘 - Metal Logo Recognition Engine</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Metal+Mania&family=Creepster&family=Nosifer&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤘</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="hero">
+            <h1 class="logo-title">LOGODETH 🤘</h1>
+            <p class="subtitle">A Metal Logo Recognition Engine for True Kvlt Warriors</p>
+            <p class="tagline">Translate unreadable metal band logos into actual band names.<br>
+                No more guessing. No more asking. Just LOGODETH.</p>
+        </header>
+
+        <!-- Main Upload Section -->
+        <main class="upload-section">
+            <div class="upload-container">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <div class="upload-icon">🔥</div>
+                        <h3>Drop Your Brutal Logo Here</h3>
+                        <p>Or click to select an image</p>
+                        <input type="file" id="fileInput" accept="image/*" hidden>
+                        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                            Choose Logo Image
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Preview Area -->
+                <div class="preview-area" id="previewArea" style="display: none;">
+                    <img id="previewImage" alt="Logo preview">
+                    <button class="analyze-btn" id="analyzeBtn">
+                        ⚡ ANALYZE LOGO ⚡
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Results Section -->
+        <section class="results-section" id="resultsSection" style="display: none;">
+            <h2>🎸 Top Matches</h2>
+            <div class="results-container" id="resultsContainer">
+                <!-- Results will be populated here -->
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="how-it-works">
+            <h2>🛠️ How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Data Collection</h3>
+                    <p>Crawls hundreds of band logos from Metal Archives and other sources.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Feature Extraction</h3>
+                    <p>Uses CLIP to embed logo images into vector space.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Similarity Search</h3>
+                    <p>Computes cosine similarity against a precomputed logo vector database.</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Result</h3>
+                    <p>Returns top matching band names with confidence scores.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Example Section -->
+        <section class="example-section">
+            <h2>🧪 Example</h2>
+            <div class="example-box">
+                <div class="example-input">
+                    <h4>Input:</h4>
+                    <div class="mock-logo">UNREADABLE BRUTAL LOGO</div>
+                </div>
+                <div class="example-arrow">→</div>
+                <div class="example-output">
+                    <h4>Output:</h4>
+                    <div class="mock-results">
+                        <div class="mock-result">1. Disentomb (0.921)</div>
+                        <div class="mock-result">2. Defeated Sanity (0.884)</div>
+                        <div class="mock-result">3. Visceral Disgorge (0.861)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <h3>🤘 Credits</h3>
+                <p>Inspired by every unreadable band shirt ever.<br>
+                   Powered by OpenAI CLIP<br>
+                   Logo dataset: scraped from Metal Archives, Last.fm, and other underground havens.</p>
+                <div class="quote">
+                    <em>"If you can read it, it's not LOGODETH."</em><br>
+                    <span>— Unknown corpse-painted oracle</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
