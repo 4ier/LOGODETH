@@ -11,29 +11,51 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContainer = document.getElementById('resultsContainer');
 
-    // Mock database of metal band logos and their names
-    const metalBands = [
-        { name: 'Disentomb', confidence: 0.921, genre: 'Brutal Death Metal' },
-        { name: 'Defeated Sanity', confidence: 0.884, genre: 'Technical Death Metal' },
-        { name: 'Visceral Disgorge', confidence: 0.861, genre: 'Slam Death Metal' },
-        { name: 'Cryptopsy', confidence: 0.847, genre: 'Technical Death Metal' },
-        { name: 'Dying Fetus', confidence: 0.823, genre: 'Death Metal' },
-        { name: 'Cannibal Corpse', confidence: 0.812, genre: 'Death Metal' },
-        { name: 'Bloodbath', confidence: 0.798, genre: 'Death Metal' },
-        { name: 'Suffocation', confidence: 0.785, genre: 'Death Metal' },
-        { name: 'Necrophagist', confidence: 0.772, genre: 'Technical Death Metal' },
-        { name: 'Gorguts', confidence: 0.759, genre: 'Technical Death Metal' },
-        { name: 'Mayhem', confidence: 0.945, genre: 'Black Metal' },
-        { name: 'Darkthrone', confidence: 0.923, genre: 'Black Metal' },
-        { name: 'Emperor', confidence: 0.901, genre: 'Symphonic Black Metal' },
-        { name: 'Burzum', confidence: 0.887, genre: 'Atmospheric Black Metal' },
-        { name: 'Immortal', confidence: 0.874, genre: 'Black Metal' },
-        { name: 'Bathory', confidence: 0.856, genre: 'Black Metal' },
-        { name: 'Gorgoroth', confidence: 0.843, genre: 'Black Metal' },
-        { name: 'Marduk', confidence: 0.829, genre: 'Black Metal' },
-        { name: 'Watain', confidence: 0.815, genre: 'Black Metal' },
-        { name: 'Behemoth', confidence: 0.802, genre: 'Blackened Death Metal' }
-    ];
+    // API configuration
+    const API_BASE_URL = 'http://localhost:8000/api/v1';
+    
+    // Logo recognition API client
+    class LogoRecognitionAPI {
+        constructor(baseUrl) {
+            this.baseUrl = baseUrl;
+        }
+        
+        async recognizeLogo(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const response = await fetch(`${this.baseUrl}/recognize`, {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail?.message || `HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            return await response.json();
+        }
+        
+        async getCachedResult(imageHash) {
+            const response = await fetch(`${this.baseUrl}/recognize/${imageHash}`);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    return null; // No cached result
+                }
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            return await response.json();
+        }
+    }
+    
+    // Initialize API client
+    const logoAPI = new LogoRecognitionAPI(API_BASE_URL);
+    
+    // Store current file for analysis
+    let currentFile = null;
 
     // Drag and drop functionality
     uploadArea.addEventListener('dragover', handleDragOver);
@@ -79,8 +101,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function handleFile(file) {
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-            showError('Please select a valid image file.');
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type.toLowerCase())) {
+            showError('Please select a valid image file (JPG, PNG, GIF, WebP).');
             return;
         }
 
@@ -89,6 +112,9 @@ document.addEventListener('DOMContentLoaded', function() {
             showError('File size must be less than 10MB.');
             return;
         }
+
+        // Store file for analysis
+        currentFile = file;
 
         // Display preview
         const reader = new FileReader();
@@ -102,61 +128,97 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function showUploadArea() {
-        // Reset file input
+        // Reset file input and current file
         fileInput.value = '';
+        currentFile = null;
         // Show upload area and hide preview
         uploadArea.style.display = 'block';
         previewArea.style.display = 'none';
         resultsSection.style.display = 'none';
     }
 
-    function analyzeImage() {
+    async function analyzeImage() {
+        if (!currentFile) {
+            showError('Please select an image file first.');
+            return;
+        }
+
         // Show loading state
         analyzeBtn.innerHTML = '<span class="loading"></span> ANALYZING...';
         analyzeBtn.disabled = true;
+        
+        // Add progress indicator
+        showProgress('Uploading image...');
 
-        // Simulate analysis delay
-        setTimeout(() => {
-            // Generate mock results
-            const results = generateMockResults();
-            displayResults(results);
+        try {
+            // Call API to recognize logo
+            updateProgress('Analyzing with AI...');
             
-            // Reset button
+            const result = await logoAPI.recognizeLogo(currentFile);
+            
+            updateProgress('Processing results...');
+            
+            // Display results
+            displayResults([result]);
+            
+            // Show success message
+            if (result.cached) {
+                showSuccess('✨ Result retrieved from cache!');
+            } else {
+                showSuccess(`🤖 Analyzed using ${result.ai_model}!`);
+            }
+            
+        } catch (error) {
+            console.error('Logo recognition failed:', error);
+            
+            // Show user-friendly error message
+            if (error.message.includes('CORS')) {
+                showError('❌ API server not accessible. Please make sure the backend is running on http://localhost:8000');
+            } else if (error.message.includes('fetch')) {
+                showError('❌ Cannot connect to API server. Please check if the backend is running.');
+            } else {
+                showError(`❌ Recognition failed: ${error.message}`);
+            }
+            
+            // Hide results on error
+            resultsSection.style.display = 'none';
+            
+        } finally {
+            // Reset button state
             analyzeBtn.innerHTML = '⚡ ANALYZE LOGO ⚡';
             analyzeBtn.disabled = false;
-        }, 2000 + Math.random() * 2000); // 2-4 seconds
-    }
-
-    function generateMockResults() {
-        // Randomly select 3-5 bands from the database
-        const numResults = Math.floor(Math.random() * 3) + 3; // 3-5 results
-        const shuffled = [...metalBands].sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, numResults);
-        
-        // Add some randomness to confidence scores
-        return selected.map((band, index) => ({
-            ...band,
-            confidence: Math.max(0.5, band.confidence - (index * 0.05) + (Math.random() * 0.1 - 0.05))
-        })).sort((a, b) => b.confidence - a.confidence);
+            hideProgress();
+        }
     }
 
     function displayResults(results) {
         resultsContainer.innerHTML = '';
         
+        // Handle single result (from API) differently than multiple results
         results.forEach((result, index) => {
             const resultItem = document.createElement('div');
             resultItem.className = 'result-item';
+            
+            // Format confidence (API returns 0-100, but display as percentage)
+            const confidence = result.confidence || 0;
+            const confidencePercent = confidence > 1 ? confidence : confidence * 100;
             
             resultItem.innerHTML = `
                 <div style="display: flex; align-items: center; margin-bottom: 10px;">
                     <span class="result-rank">${index + 1}.</span>
                     <div style="flex: 1;">
-                        <div class="result-band">${result.name}</div>
-                        <div class="result-confidence">Confidence: ${(result.confidence * 100).toFixed(1)}% • ${result.genre}</div>
+                        <div class="result-band">${result.band_name || result.name || 'Unknown'}</div>
+                        <div class="result-confidence">
+                            Confidence: ${confidencePercent.toFixed(1)}%
+                            ${result.genre ? ` • ${result.genre}` : ''}
+                            ${result.cached ? ' • 💾 Cached' : ''}
+                        </div>
+                        ${result.description ? `<div class="result-description">${result.description}</div>` : ''}
+                        ${result.ai_model ? `<div class="result-model">Model: ${result.ai_model}</div>` : ''}
                     </div>
                 </div>
                 <div class="confidence-bar">
-                    <div class="confidence-fill" style="width: ${result.confidence * 100}%"></div>
+                    <div class="confidence-fill" style="width: ${confidencePercent}%"></div>
                 </div>
             `;
             
@@ -167,33 +229,95 @@ document.addEventListener('DOMContentLoaded', function() {
         resultsSection.scrollIntoView({ behavior: 'smooth' });
     }
 
+    // Progress indicator
+    let progressElement;
+    
+    function showProgress(message) {
+        progressElement = document.createElement('div');
+        progressElement.id = 'progress-indicator';
+        progressElement.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #8B0000, #DC143C);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(139, 0, 0, 0.4);
+            z-index: 1001;
+            font-weight: bold;
+            animation: slideDown 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        `;
+        
+        progressElement.innerHTML = `
+            <div class="progress-spinner"></div>
+            <span>${message}</span>
+        `;
+        
+        document.body.appendChild(progressElement);
+    }
+    
+    function updateProgress(message) {
+        if (progressElement) {
+            const span = progressElement.querySelector('span');
+            if (span) span.textContent = message;
+        }
+    }
+    
+    function hideProgress() {
+        if (progressElement) {
+            progressElement.remove();
+            progressElement = null;
+        }
+    }
+
     function showError(message) {
-        // Create error notification
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
+        showNotification(message, 'error');
+    }
+    
+    function showSuccess(message) {
+        showNotification(message, 'success');
+    }
+    
+    function showNotification(message, type = 'info') {
+        const colors = {
+            error: { bg: 'linear-gradient(45deg, #ff0000, #cc0000)', shadow: 'rgba(255, 0, 0, 0.3)' },
+            success: { bg: 'linear-gradient(45deg, #008000, #006400)', shadow: 'rgba(0, 128, 0, 0.3)' },
+            info: { bg: 'linear-gradient(45deg, #4169E1, #0000CD)', shadow: 'rgba(65, 105, 225, 0.3)' }
+        };
+        
+        const notification = document.createElement('div');
+        notification.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
-            background: linear-gradient(45deg, #ff0000, #cc0000);
+            background: ${colors[type].bg};
             color: white;
             padding: 15px 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3);
+            box-shadow: 0 4px 15px ${colors[type].shadow};
             z-index: 1000;
             font-weight: bold;
             animation: slideIn 0.3s ease;
+            max-width: 400px;
+            word-wrap: break-word;
         `;
-        errorDiv.textContent = message;
+        notification.textContent = message;
         
-        document.body.appendChild(errorDiv);
+        document.body.appendChild(notification);
         
-        // Remove after 3 seconds
+        // Remove after 4 seconds
         setTimeout(() => {
-            errorDiv.remove();
-        }, 3000);
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 4000);
     }
 
-    // Add CSS animation for error notification
+    // Add CSS animations and styles
     const style = document.createElement('style');
     style.textContent = `
         @keyframes slideIn {
@@ -205,6 +329,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 transform: translateX(0);
                 opacity: 1;
             }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .progress-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .result-description {
+            color: #ccc;
+            font-size: 0.9em;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        .result-model {
+            color: #888;
+            font-size: 0.8em;
+            margin-top: 3px;
         }
     `;
     document.head.appendChild(style);

@@ -42,45 +42,42 @@ python3 -m http.server 8000
 # then visit http://localhost:8000
 ```
 
-### Option 2: Full Backend Setup (Future Implementation)
+### Option 2: API-Powered Backend (In Development)
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the web scraper to collect logos
-python scraper/metal_archives_scraper.py
+# Set up environment variables
+cp .env.example .env
+# Add your API keys:
+# - OPENAI_API_KEY
+# - ANTHROPIC_API_KEY (optional)
 
-# Process and embed logo images
-python processing/logo_processor.py
+# Run the backend server
+uvicorn backend.app:app --reload
 
-# Run the web app
-python app.py
-
-# Or run the Gradio interface
-python gradio_ui.py
+# Access the API at http://localhost:8000
+# API docs at http://localhost:8000/docs
 ```
 
 ---
 
 ## How It Works
 
-1. **Data Collection**:  
-   Crawls thousands of band logos from Metal Archives using intelligent web scraping.
+1. **Image Upload**:  
+   User uploads a metal band logo image through the web interface.
 
-2. **Image Processing**:  
-   Preprocesses logo images, handles various formats and sizes.
+2. **Multimodal AI Recognition**:  
+   Leverages state-of-the-art vision models (GPT-4V, Claude Vision) to analyze and identify logos.
 
-3. **Feature Extraction**:  
-   Uses [CLIP](https://github.com/openai/CLIP) to embed logo images into high-dimensional vector space.
+3. **Smart Fallback**:  
+   If AI models are unavailable, falls back to reverse image search APIs.
 
-4. **Vector Database**:  
-   Stores embeddings in optimized vector database for fast similarity search.
+4. **Intelligent Caching**:  
+   Results are cached to minimize API costs and improve response times.
 
-5. **Similarity Search**:  
-   Computes cosine similarity against precomputed logo vector database.
-
-6. **Result Ranking**:  
-   Returns top matching band names with confidence scores and metadata.
+5. **Result Display**:  
+   Returns band name, confidence score, and additional metadata when available.
 
 ---
 
@@ -104,147 +101,108 @@ logodeth/
 ├── script.js               # Frontend JavaScript functionality
 ├── README.md               # This file
 ├── requirements.txt        # Python dependencies
-├── scraper/
-│   ├── metal_archives_scraper.py    # Main scraper for Metal Archives
-│   ├── logo_downloader.py           # Image download utilities
-│   ├── rate_limiter.py              # Respectful scraping rate limiting
-│   └── data_validator.py            # Data quality validation
-├── processing/
-│   ├── logo_processor.py            # Image preprocessing pipeline
-│   ├── clip_embedder.py             # CLIP-based feature extraction
-│   └── vector_db.py                 # Vector database operations
+├── .env.example            # Example environment variables
 ├── backend/
-│   ├── app.py                       # Flask/FastAPI main server
-│   ├── api_routes.py                # API endpoint definitions
-│   └── logo_matcher.py              # Core matching algorithm
-├── data/
-│   ├── raw_logos/                   # Downloaded logo images
-│   ├── processed_logos/             # Preprocessed images
-│   ├── embeddings/                  # CLIP embeddings
-│   └── metadata.json               # Band metadata
+│   ├── app.py              # FastAPI main server
+│   ├── api_routes.py       # API endpoint definitions
+│   ├── logo_matcher.py     # AI-powered matching logic
+│   ├── llm_client.py       # Multimodal LLM integration
+│   ├── cache.py            # Redis caching layer
+│   └── config.py           # Configuration management
+├── docker/
+│   ├── Dockerfile          # Application container
+│   └── docker-compose.yml  # Development environment
 └── tests/
-    ├── test_scraper.py
-    ├── test_processor.py
-    └── test_matcher.py
+    ├── test_api.py         # API endpoint tests
+    ├── test_matcher.py     # Logo matching tests
+    └── test_cache.py       # Cache functionality tests
 ```
 
 ---
 
-## Development Roadmap
+## Development Roadmap (Simplified)
 
-### Phase 1: Data Collection & Infrastructure (Week 1-2)
+### Phase 1: Backend Development (Week 1)
 * [x] Build dark metal-themed web interface
 * [x] Add drag & drop image upload
 * [x] Create mock logo recognition system
-* [ ] **Implement Metal Archives scraper**
-  - [ ] Band listing crawler
-  - [ ] Logo image downloader
-  - [ ] Metadata extraction (genre, country, year)
-  - [ ] Rate limiting and respectful scraping
-  - [ ] Error handling and retry logic
-* [ ] **Data validation and cleaning**
-  - [ ] Image format standardization
-  - [ ] Duplicate detection and removal
-  - [ ] Quality filtering (resolution, corruption)
+* [ ] **FastAPI backend setup**
+  - [ ] Basic server structure
+  - [ ] Image upload endpoint
+  - [ ] Environment configuration
+* [ ] **Multimodal AI Integration**
+  - [ ] OpenAI GPT-4V integration
+  - [ ] Anthropic Claude Vision integration
+  - [ ] Fallback mechanism implementation
+  - [ ] Response parsing and formatting
 
-### Phase 2: Image Processing & AI Pipeline (Week 3-4)
-* [ ] **Image preprocessing pipeline**
-  - [ ] Resize and normalize images
-  - [ ] Background removal/standardization
-  - [ ] Augmentation for training data
-* [ ] **CLIP integration**
-  - [ ] Batch embedding generation
-  - [ ] Embedding optimization and compression
-  - [ ] Performance benchmarking
-* [ ] **Vector database setup**
-  - [ ] Choose optimal vector DB (Pinecone/Weaviate/Chroma)
-  - [ ] Index optimization for similarity search
-  - [ ] Backup and versioning system
+### Phase 2: Core Features (Week 2)
+* [ ] **Caching Layer**
+  - [ ] Redis integration
+  - [ ] Image hash-based caching
+  - [ ] TTL configuration
+* [ ] **API Optimization**
+  - [ ] Rate limiting
+  - [ ] Error handling
+  - [ ] Request validation
+  - [ ] CORS configuration
+* [ ] **Frontend Integration**
+  - [ ] Replace mock data with API calls
+  - [ ] Loading states
+  - [ ] Error handling UI
 
-### Phase 3: Backend Development (Week 5-6)
-* [ ] **API development**
-  - [ ] Flask/FastAPI server setup
-  - [ ] Image upload and processing endpoints
-  - [ ] Logo matching and ranking API
-  - [ ] Batch processing capabilities
-* [ ] **Core matching algorithm**
-  - [ ] Similarity computation optimization
-  - [ ] Multi-stage filtering (genre, year, etc.)
-  - [ ] Confidence score calibration
-  - [ ] Top-N recommendation system
-
-### Phase 4: Frontend Integration & Testing (Week 7-8)
-* [ ] **Frontend-backend integration**
-  - [ ] Replace mock data with real API calls
-  - [ ] Real-time processing indicators
-  - [ ] Error handling and user feedback
-* [ ] **Advanced features**
-  - [ ] Batch logo recognition
-  - [ ] Search history and favorites
-  - [ ] Band information integration
-  - [ ] Spotify/Apple Music links
-* [ ] **Testing and optimization**
-  - [ ] Unit tests for all components
-  - [ ] Integration testing
-  - [ ] Performance optimization
-  - [ ] User acceptance testing
-
-### Phase 5: Deployment & Scaling (Week 9-10)
-* [ ] **Production deployment**
-  - [ ] Containerization (Docker)
-  - [ ] Cloud deployment (AWS/GCP/Azure)
-  - [ ] CDN setup for image serving
-  - [ ] Monitoring and logging
-* [ ] **Additional features**
-  - [ ] Mobile app version
-  - [ ] Chrome extension
-  - [ ] Offline CLI version
-  - [ ] API documentation and public access
+### Phase 3: Deployment (Week 3)
+* [ ] **Containerization**
+  - [ ] Create Dockerfile
+  - [ ] Docker Compose setup
+  - [ ] Environment management
+* [ ] **Production Setup**
+  - [ ] Choose hosting platform
+  - [ ] SSL/HTTPS configuration
+  - [ ] Domain setup
+  - [ ] Monitoring setup
+* [ ] **Documentation**
+  - [ ] API documentation
+  - [ ] Deployment guide
+  - [ ] Usage instructions
 
 ---
 
 ## Technical Implementation Details
 
-### Web Scraping Strategy
-- **Target**: Metal Archives (https://www.metal-archives.com/)
-- **Approach**: Respectful scraping with rate limiting
-- **Data Points**: Band name, logo image, genre, country, formation year
-- **Estimated Dataset**: 50,000+ band logos
-- **Storage**: Local filesystem + metadata JSON
-
-### AI Pipeline
-- **Model**: OpenAI CLIP (ViT-B/32 or ViT-L/14)
-- **Preprocessing**: 224x224 RGB normalization
-- **Embeddings**: 512/768-dimensional vectors
-- **Similarity**: Cosine similarity with optimized search
-- **Database**: Vector database with metadata filtering
+### AI Integration
+- **Primary**: OpenAI GPT-4 Vision API
+- **Secondary**: Anthropic Claude 3 Vision API
+- **Fallback**: Reverse image search APIs
+- **Caching**: Redis with image hash keys
+- **Cost Optimization**: Tiered API usage based on confidence
 
 ### Backend Architecture
 - **Framework**: FastAPI for high performance
-- **Database**: PostgreSQL + pgvector for embeddings
-- **Caching**: Redis for frequent queries
-- **Queue**: Celery for background processing
-- **Storage**: S3-compatible object storage
+- **Caching**: Redis for API response caching
+- **Rate Limiting**: Built-in request throttling
+- **Storage**: Temporary file handling for uploads
+- **Monitoring**: Structured logging and metrics
 
 ---
 
-## Data Collection Ethics
+## API Usage & Costs
 
-- **Respectful Scraping**: Implements proper rate limiting (1-2 requests/second)
-- **Terms Compliance**: Follows Metal Archives' terms of service
-- **Attribution**: Credits data sources appropriately
-- **Fair Use**: Educational/research purposes, non-commercial
-- **Opt-out**: Respects robots.txt and removal requests
+- **GPT-4 Vision**: ~$0.01-0.03 per logo recognition
+- **Claude Vision**: Similar pricing tier
+- **Caching Strategy**: Reduces duplicate API calls
+- **Rate Limiting**: Prevents abuse and controls costs
+- **Monthly Budget**: Configurable spending limits
 
 ---
 
 ## Performance Targets
 
-- **Dataset Size**: 50,000+ band logos
-- **Query Speed**: <500ms for similarity search
-- **Accuracy**: >85% top-3 matching accuracy
-- **Throughput**: 100+ concurrent users
-- **Uptime**: 99.9% availability
+- **Response Time**: <2s for logo recognition
+- **Cache Hit Rate**: >60% for popular logos
+- **API Availability**: 99.9% uptime
+- **Concurrent Users**: 50+ simultaneous requests
+- **Cost Efficiency**: <$0.02 average per request
 
 ---
 
@@ -262,17 +220,29 @@ The current mock implementation includes logos from:
 
 ## Deployment
 
-### Static Hosting (Current)
-Deploy to any static hosting service:
-- **Netlify**: Drag and drop the folder
-- **Vercel**: Connect your GitHub repo
-- **GitHub Pages**: Enable in repository settings
+### Quick Deploy with Docker
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
 
-### Full Stack (Future)
-- **Backend**: Railway, Heroku, or DigitalOcean
-- **Frontend**: Vercel or Netlify
-- **Database**: PostgreSQL with pgvector for embeddings
-- **Storage**: AWS S3 or Google Cloud Storage
+# Or build manually
+docker build -t logodeth .
+docker run -p 8000:8000 --env-file .env logodeth
+```
+
+### Cloud Deployment Options
+- **Heroku**: One-click deploy with Heroku button
+- **Railway**: Direct GitHub integration
+- **DigitalOcean App Platform**: Container-based deployment
+- **AWS ECS/Fargate**: For scalable production use
+
+### Production Checklist
+- [ ] Set production API keys
+- [ ] Configure Redis for persistent caching
+- [ ] Set up SSL/HTTPS
+- [ ] Configure rate limiting
+- [ ] Set up monitoring (e.g., Sentry)
+- [ ] Configure backup strategy for Redis
 
 ---
 
@@ -305,14 +275,14 @@ Want to make LOGODETH more brutal?
 5. Open a Pull Request
 
 ### Ideas for Contributions:
-- Improve the Metal Archives scraper
-- Implement additional data sources
-- Optimize CLIP embedding pipeline
-- Enhance the matching algorithm
+- Add support for more vision AI providers
+- Implement batch logo processing
+- Create a Discord bot integration
 - Add mobile app version
 - Create Chrome extension for logo recognition on any website
-- Implement band information integration
-- Add sound effects and brutal animations
+- Implement band information enrichment
+- Add more metal-themed UI effects
+- Improve caching strategies
 
 ---
 
@@ -320,7 +290,8 @@ Want to make LOGODETH more brutal?
 
 ### Prerequisites
 - Python 3.8+
-- Node.js 16+ (for frontend build tools)
+- Redis 6.0+
+- Docker & Docker Compose (optional)
 - Git
 
 ### Installation
@@ -346,9 +317,9 @@ pip install -r requirements-dev.txt
 pytest
 
 # Run specific test suite
-pytest tests/test_scraper.py
-pytest tests/test_processor.py
+pytest tests/test_api.py
 pytest tests/test_matcher.py
+pytest tests/test_cache.py
 
 # Run with coverage
 pytest --cov=.
@@ -357,9 +328,14 @@ pytest --cov=.
 ### Environment Variables
 Create a `.env` file with:
 ```
-METAL_ARCHIVES_DELAY=1.5
-CLIP_MODEL=ViT-B/32
-VECTOR_DB_URL=your_vector_db_url
-API_SECRET_KEY=your_secret_key
+# Required
+OPENAI_API_KEY=your_openai_api_key
+
+# Optional
+ANTHROPIC_API_KEY=your_anthropic_api_key
+REDIS_URL=redis://localhost:6379
+API_RATE_LIMIT=10
+CACHE_TTL=86400
+MAX_FILE_SIZE=10485760  # 10MB
 ```
 
