@@ -50,8 +50,8 @@ class Settings(BaseSettings):
     ai_timeout: int = Field(default=60, ge=10, le=300, description="AI API timeout in seconds")
     
     # Logging
-    log_level: str = Field(default="INFO", regex="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$", description="Log level")
-    log_format: str = Field(default="json", regex="^(json|text)$", description="Log format")
+    log_level: str = Field(default="INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$", description="Log level")
+    log_format: str = Field(default="json", pattern="^(json|text)$", description="Log format")
     
     # Development Settings
     debug: bool = Field(default=False, description="Enable debug mode")
