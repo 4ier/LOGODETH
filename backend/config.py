@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     environment: str = Field(default="development", description="Environment: development, production, testing")
     
     # API Keys and Base URLs
-    openai_api_key: str = Field(..., description="OpenAI API key or OpenRouter API key")
+    openai_api_key: str = Field(default="", description="OpenAI API key or OpenRouter API key")
     openai_base_url: Optional[str] = Field(default=None, description="Custom base URL for OpenAI-compatible APIs (e.g., OpenRouter)")
     anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key for Claude Vision")
     anthropic_base_url: Optional[str] = Field(default=None, description="Custom base URL for Anthropic-compatible APIs")

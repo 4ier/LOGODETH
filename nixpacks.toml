@@ -8,4 +8,4 @@ aptPkgs = ["libmagic1", "curl"]
 
 [start]
 # Optimized start command for Railway
-cmd = "gunicorn backend.app:app -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --timeout 120"
+cmd = "python start-railway.py"
