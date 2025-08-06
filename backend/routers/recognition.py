@@ -1,7 +1,7 @@
 """
 Logo recognition API endpoints
 """
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from typing import Optional
 import time
@@ -11,6 +11,7 @@ from backend.config import get_settings
 from backend.models.recognition import RecognitionResult, RecognitionError
 from backend.services.recognition import RecognitionService
 from backend.utils.validators import validate_image_file
+from backend.utils.rate_limiter import rate_limiter, cost_tracker
 
 router = APIRouter()
 settings = get_settings()
@@ -33,6 +34,7 @@ def get_recognition_service() -> RecognitionService:
     description="Upload a metal band logo image and get the band name using AI"
 )
 async def recognize_logo(
+    request: Request,
     file: UploadFile = File(..., description="Logo image file"),
     service: RecognitionService = Depends(get_recognition_service)
 ) -> RecognitionResult:
@@ -43,6 +45,34 @@ async def recognize_logo(
     Max file size: 10MB
     """
     start_time = time.time()
+    
+    # Check rate limit
+    client_ip = request.client.host
+    allowed, wait_seconds = await rate_limiter.check_rate_limit(client_ip)
+    
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "error": "rate_limit_exceeded",
+                "message": f"Too many requests. Please wait {wait_seconds} seconds.",
+                "retry_after": wait_seconds
+            },
+            headers={"Retry-After": str(wait_seconds)}
+        )
+    
+    # Check budget limits (optional)
+    within_budget, reason = await cost_tracker.check_budget_limit()
+    if not within_budget:
+        logger.warning(f"Budget limit exceeded: {reason}")
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "error": "budget_exceeded",
+                "message": reason,
+                "suggestion": "Please wait until tomorrow or increase budget limits"
+            }
+        )
     
     try:
         # Validate file
@@ -94,3 +124,31 @@ async def get_cached_result(
         )
     
     return result
+
+
+@router.get(
+    "/stats/usage",
+    summary="Get API usage statistics",
+    description="Get current API usage and cost statistics"
+)
+async def get_usage_stats():
+    """Get usage statistics and costs"""
+    stats = await cost_tracker.get_usage_stats()
+    
+    return {
+        "usage": {
+            "daily_cost": f"${stats['daily_cost']:.2f}",
+            "monthly_cost": f"${stats['monthly_cost']:.2f}",
+            "daily_requests": stats['daily_requests'],
+            "estimated_monthly": f"${stats['estimated_monthly']:.2f}"
+        },
+        "limits": {
+            "rate_limit": f"{settings.api_rate_limit} requests/minute",
+            "daily_budget": "$10.00",
+            "monthly_budget": "$100.00"
+        },
+        "cache_info": {
+            "ttl": f"{settings.cache_ttl} seconds",
+            "type": "Redis"
+        }
+    }

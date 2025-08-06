@@ -67,6 +67,10 @@ class RecognitionService:
             else:
                 raise e
         
+        # Track API usage cost
+        from backend.utils.rate_limiter import cost_tracker
+        await cost_tracker.add_usage(ai_model)
+        
         # Create recognition result
         recognition_result = RecognitionResult(
             band_name=result.get("band_name", "Unknown"),
