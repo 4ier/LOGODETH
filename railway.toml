@@ -5,11 +5,11 @@ builder = "nixpacks"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "always"
-startCommand = "gunicorn backend.app:app -w 2 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --timeout 300"
+startCommand = "gunicorn backend.app:app -w 1 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:$PORT --timeout 120"
 
 [env]
 LOGODETH_ENVIRONMENT = "production"
-LOGODETH_WORKER_COUNT = "2"
+LOGODETH_WORKER_COUNT = "1"
 LOGODETH_CACHE_TTL = "172800"
 LOGODETH_API_RATE_LIMIT = "30"
 LOGODETH_MAX_FILE_SIZE = "10485760"
