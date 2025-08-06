@@ -11,8 +11,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsSection = document.getElementById('resultsSection');
     const resultsContainer = document.getElementById('resultsContainer');
 
-    // API configuration
-    const API_BASE_URL = 'http://localhost:8000/api/v1';
+    // API configuration with environment detection
+    const API_BASE_URL = (() => {
+        // Check if we're in development or production
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:8000/api/v1';
+        } else {
+            // Production environment - use relative URLs
+            return '/api/v1';
+        }
+    })();
     
     // Logo recognition API client
     class LogoRecognitionAPI {
@@ -20,34 +28,82 @@ document.addEventListener('DOMContentLoaded', function() {
             this.baseUrl = baseUrl;
         }
         
-        async recognizeLogo(file) {
+        async recognizeLogo(file, options = {}) {
             const formData = new FormData();
             formData.append('file', file);
             
-            const response = await fetch(`${this.baseUrl}/recognize`, {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail?.message || `HTTP ${response.status}: ${response.statusText}`);
+            // Add optional parameters
+            if (options.provider_preference) {
+                formData.append('provider_preference', JSON.stringify(options.provider_preference));
+            }
+            if (options.force_refresh) {
+                formData.append('force_refresh', 'true');
             }
             
-            return await response.json();
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+            
+            try {
+                const response = await fetch(`${this.baseUrl}/recognize`, {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    let errorMessage;
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail?.message || errorData.message || errorData.detail;
+                    } catch {
+                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    throw new Error(errorMessage);
+                }
+                
+                return await response.json();
+                
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error('Request timeout - the analysis took too long. Please try again.');
+                }
+                throw error;
+            }
         }
         
-        async getCachedResult(imageHash) {
-            const response = await fetch(`${this.baseUrl}/recognize/${imageHash}`);
-            
-            if (!response.ok) {
-                if (response.status === 404) {
-                    return null; // No cached result
+        async getHealth() {
+            try {
+                const response = await fetch(`${this.baseUrl.replace('/api/v1', '')}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    return { status: 'unhealthy', error: `HTTP ${response.status}` };
                 }
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                
+                return await response.json();
+            } catch (error) {
+                return { status: 'unreachable', error: error.message };
             }
-            
-            return await response.json();
+        }
+        
+        async getCacheStats() {
+            try {
+                const response = await fetch(`${this.baseUrl}/cache/stats`);
+                if (!response.ok) return null;
+                return await response.json();
+            } catch {
+                return null;
+            }
         }
     }
     
@@ -148,34 +204,53 @@ document.addEventListener('DOMContentLoaded', function() {
         analyzeBtn.disabled = true;
         
         // Add progress indicator
-        showProgress('Uploading image...');
+        showProgress('Checking API status...');
 
         try {
-            // Call API to recognize logo
+            // Check API health first
+            const health = await logoAPI.getHealth();
+            if (health.status !== 'healthy') {
+                throw new Error(`API server is ${health.status}: ${health.error || 'Unknown error'}`);
+            }
+            
+            // Show file upload progress
+            updateProgress('Uploading image...');
+            
+            // Get analysis options from UI (could add provider selection UI later)
+            const options = {
+                provider_preference: getPreferredProviders(),
+                force_refresh: false  // Could add "Refresh Cache" button later
+            };
+            
             updateProgress('Analyzing with AI...');
             
-            const result = await logoAPI.recognizeLogo(currentFile);
+            const result = await logoAPI.recognizeLogo(currentFile, options);
             
             updateProgress('Processing results...');
             
             // Display results
             displayResults([result]);
             
-            // Show success message
-            if (result.cached) {
-                showSuccess('✨ Result retrieved from cache!');
+            // Show success message with more details
+            if (result._cache_metadata?.cached_at) {
+                const cacheAge = getCacheAge(result._cache_metadata.cached_at);
+                showSuccess(`✨ Result retrieved from cache (${cacheAge})!`);
             } else {
-                showSuccess(`🤖 Analyzed using ${result.ai_model}!`);
+                showSuccess(`🤖 Analyzed using ${result.ai_model || 'AI'}!`);
             }
             
         } catch (error) {
             console.error('Logo recognition failed:', error);
             
-            // Show user-friendly error message
+            // Show user-friendly error message with better diagnostics
             if (error.message.includes('CORS')) {
-                showError('❌ API server not accessible. Please make sure the backend is running on http://localhost:8000');
-            } else if (error.message.includes('fetch')) {
+                showError('❌ API server not accessible due to CORS policy. Please check server configuration.');
+            } else if (error.message.includes('timeout') || error.message.includes('AbortError')) {
+                showError('❌ Request timed out. The analysis is taking too long. Please try again.');
+            } else if (error.message.includes('fetch') || error.message.includes('NetworkError')) {
                 showError('❌ Cannot connect to API server. Please check if the backend is running.');
+            } else if (error.message.includes('unreachable')) {
+                showError('❌ API server is unreachable. Please check the server status.');
             } else {
                 showError(`❌ Recognition failed: ${error.message}`);
             }
@@ -203,18 +278,25 @@ document.addEventListener('DOMContentLoaded', function() {
             const confidence = result.confidence || 0;
             const confidencePercent = confidence > 1 ? confidence : confidence * 100;
             
+            // Extract cache info
+            const isCached = result._cache_metadata?.cached_at;
+            const cacheAge = isCached ? getCacheAge(result._cache_metadata.cached_at) : null;
+            
             resultItem.innerHTML = `
                 <div style="display: flex; align-items: center; margin-bottom: 10px;">
                     <span class="result-rank">${index + 1}.</span>
                     <div style="flex: 1;">
-                        <div class="result-band">${result.band_name || result.name || 'Unknown'}</div>
+                        <div class="result-band">${escapeHtml(result.band_name || result.name || 'Unknown')}</div>
                         <div class="result-confidence">
                             Confidence: ${confidencePercent.toFixed(1)}%
-                            ${result.genre ? ` • ${result.genre}` : ''}
-                            ${result.cached ? ' • 💾 Cached' : ''}
+                            ${result.genre ? ` • ${escapeHtml(result.genre)}` : ''}
+                            ${isCached ? ` • 💾 Cached (${cacheAge})` : ''}
                         </div>
-                        ${result.description ? `<div class="result-description">${result.description}</div>` : ''}
-                        ${result.ai_model ? `<div class="result-model">Model: ${result.ai_model}</div>` : ''}
+                        ${result.description ? `<div class="result-description">${escapeHtml(result.description)}</div>` : ''}
+                        <div class="result-metadata">
+                            ${result.ai_model ? `<span class="result-model">Model: ${escapeHtml(result.ai_model)}</span>` : ''}
+                            ${result.processing_time_ms ? `<span class="result-timing">• ${result.processing_time_ms}ms</span>` : ''}
+                        </div>
                     </div>
                 </div>
                 <div class="confidence-bar">
@@ -374,17 +456,70 @@ document.addEventListener('DOMContentLoaded', function() {
             font-style: italic;
         }
         
-        .result-model {
+        .result-metadata {
             color: #888;
             font-size: 0.8em;
             margin-top: 3px;
+        }
+        
+        .result-model, .result-timing {
+            margin-right: 10px;
         }
     `;
     document.head.appendChild(style);
 
     // Add some interactive effects
     addInteractiveEffects();
+    
+    // Initialize health monitoring
+    initHealthMonitoring();
 });
+
+// Utility functions
+function getPreferredProviders() {
+    // Could be configured via UI settings later
+    return ['openai', 'anthropic'];
+}
+
+function getCacheAge(cachedAt) {
+    try {
+        const cached = new Date(cachedAt);
+        const now = new Date();
+        const diffMs = now - cached;
+        
+        if (diffMs < 60000) {
+            return 'just now';
+        } else if (diffMs < 3600000) {
+            return `${Math.floor(diffMs / 60000)}m ago`;
+        } else if (diffMs < 86400000) {
+            return `${Math.floor(diffMs / 3600000)}h ago`;
+        } else {
+            return `${Math.floor(diffMs / 86400000)}d ago`;
+        }
+    } catch {
+        return 'unknown age';
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function initHealthMonitoring() {
+    // Check API health on page load
+    setTimeout(async () => {
+        try {
+            const health = await logoAPI.getHealth();
+            if (health.status !== 'healthy') {
+                showNotification(`⚠️ API Status: ${health.status}`, 'info');
+            }
+        } catch (error) {
+            console.warn('Health check failed:', error);
+        }
+    }, 1000);
+}
 
 function addInteractiveEffects() {
     // Add hover effects to steps

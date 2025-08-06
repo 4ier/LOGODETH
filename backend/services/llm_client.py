@@ -51,7 +51,7 @@ If you cannot identify the band, still provide your best guess with low confiden
 
         try:
             response = await self.openai_client.chat.completions.create(
-                model="gpt-4-vision-preview",
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "user",
@@ -126,7 +126,7 @@ If you cannot identify the band, still provide your best guess with low confiden
 
         try:
             response = await self.anthropic_client.messages.create(
-                model="claude-3-opus-20240229",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=300,
                 temperature=0.1,
                 messages=[
@@ -172,6 +172,45 @@ If you cannot identify the band, still provide your best guess with low confiden
             logger.error(f"Anthropic API error: {e}")
             raise
     
+    async def recognize_with_fallback(self, base64_image: str, provider_preference: list = None) -> Dict[str, Any]:
+        """
+        Try multiple providers with fallback mechanism
+        
+        Args:
+            base64_image: Base64 encoded image
+            provider_preference: List of providers to try in order ['openai', 'anthropic']
+            
+        Returns:
+            Dict with recognition results
+        """
+        if not provider_preference:
+            provider_preference = ['openai', 'anthropic'] if self.anthropic_client else ['openai']
+        
+        last_error = None
+        
+        for provider in provider_preference:
+            try:
+                if provider == 'openai':
+                    logger.info("Attempting recognition with OpenAI GPT-4o")
+                    return await self.recognize_with_openai(base64_image)
+                elif provider == 'anthropic' and self.anthropic_client:
+                    logger.info("Attempting recognition with Anthropic Claude")
+                    return await self.recognize_with_anthropic(base64_image)
+                else:
+                    logger.warning(f"Provider {provider} not available, skipping")
+                    continue
+                    
+            except Exception as e:
+                logger.error(f"Provider {provider} failed: {e}")
+                last_error = e
+                continue
+        
+        # If all providers failed, raise the last error
+        if last_error:
+            raise last_error
+        else:
+            raise Exception("No available providers configured")
+    
     def _parse_text_response(self, text: str) -> Dict[str, Any]:
         """
         Fallback parser for non-JSON responses
@@ -208,3 +247,42 @@ If you cannot identify the band, still provide your best guess with low confiden
                     pass
         
         return result
+    
+    async def get_provider_health(self) -> Dict[str, bool]:
+        """
+        Check health status of available providers
+        
+        Returns:
+            Dict with provider health status
+        """
+        health = {}
+        
+        # Test OpenAI
+        try:
+            # Simple test call with minimal token usage
+            await self.openai_client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": "test"}],
+                max_tokens=1
+            )
+            health['openai'] = True
+        except Exception as e:
+            logger.warning(f"OpenAI health check failed: {e}")
+            health['openai'] = False
+        
+        # Test Anthropic if available
+        if self.anthropic_client:
+            try:
+                await self.anthropic_client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1,
+                    messages=[{"role": "user", "content": "test"}]
+                )
+                health['anthropic'] = True
+            except Exception as e:
+                logger.warning(f"Anthropic health check failed: {e}")
+                health['anthropic'] = False
+        else:
+            health['anthropic'] = False
+        
+        return health

@@ -2,11 +2,52 @@
 Redis cache service for recognition results
 """
 import json
+import hashlib
 from typing import Optional, Dict, Any
 import redis.asyncio as redis
 from loguru import logger
+from datetime import datetime, timedelta
 
 from backend.config import get_settings
+
+
+class ImageHasher:
+    """Utility class for generating image hashes"""
+    
+    @staticmethod
+    def hash_image(image_bytes: bytes) -> str:
+        """
+        Generate SHA-256 hash of image bytes
+        
+        Args:
+            image_bytes: Raw image bytes
+            
+        Returns:
+            Hexadecimal hash string
+        """
+        return hashlib.sha256(image_bytes).hexdigest()
+    
+    @staticmethod
+    def hash_image_with_params(image_bytes: bytes, **params) -> str:
+        """
+        Generate hash including processing parameters
+        
+        Args:
+            image_bytes: Raw image bytes
+            **params: Additional parameters to include in hash
+            
+        Returns:
+            Hexadecimal hash string
+        """
+        # Create a combined string with image hash and sorted parameters
+        image_hash = ImageHasher.hash_image(image_bytes)
+        
+        if params:
+            param_str = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+            combined = f"{image_hash}:{param_str}"
+            return hashlib.sha256(combined.encode()).hexdigest()
+        
+        return image_hash
 
 
 class CacheService:
@@ -16,6 +57,7 @@ class CacheService:
         self.settings = get_settings()
         self.redis_client = None
         self.prefix = "logodeth:logo:"
+        self.hasher = ImageHasher()
     
     async def _get_client(self) -> redis.Redis:
         """Get or create Redis client"""
@@ -53,6 +95,47 @@ class CacheService:
             # Don't fail if cache is down
             return None
     
+    async def get_by_image(self, image_bytes: bytes, **params) -> Optional[Dict[str, Any]]:
+        """
+        Get cached result by image bytes
+        
+        Args:
+            image_bytes: Raw image bytes
+            **params: Additional parameters used in processing
+            
+        Returns:
+            Cached data or None
+        """
+        image_hash = self.hasher.hash_image_with_params(image_bytes, **params)
+        return await self.get(image_hash)
+    
+    async def set_by_image(self, image_bytes: bytes, value: Dict[str, Any], **params) -> bool:
+        """
+        Set cached result by image bytes
+        
+        Args:
+            image_bytes: Raw image bytes
+            value: Data to cache
+            **params: Additional parameters used in processing
+            
+        Returns:
+            Success status
+        """
+        image_hash = self.hasher.hash_image_with_params(image_bytes, **params)
+        
+        # Add metadata to cached value
+        enhanced_value = {
+            **value,
+            "_cache_metadata": {
+                "cached_at": datetime.utcnow().isoformat(),
+                "image_hash": image_hash,
+                "cache_params": params,
+                "ttl_seconds": self.settings.cache_ttl
+            }
+        }
+        
+        return await self.set(image_hash, enhanced_value)
+    
     async def set(self, key: str, value: Dict[str, Any]) -> bool:
         """
         Set cache value with TTL
@@ -67,6 +150,17 @@ class CacheService:
         try:
             client = await self._get_client()
             full_key = f"{self.prefix}{key}"
+            
+            # Enhance value with cache metadata if not already present
+            if "_cache_metadata" not in value:
+                value = {
+                    **value,
+                    "_cache_metadata": {
+                        "cached_at": datetime.utcnow().isoformat(),
+                        "cache_key": key,
+                        "ttl_seconds": self.settings.cache_ttl
+                    }
+                }
             
             json_value = json.dumps(value, default=str)
             await client.setex(
@@ -147,6 +241,53 @@ class CacheService:
         except Exception as e:
             logger.error(f"Redis health check failed: {e}")
             return False
+    
+    async def get_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics
+        
+        Returns:
+            Cache statistics
+        """
+        try:
+            client = await self._get_client()
+            pattern = f"{self.prefix}*"
+            
+            # Count keys
+            key_count = 0
+            total_memory = 0
+            oldest_key = None
+            newest_key = None
+            
+            async for key in client.scan_iter(match=pattern):
+                key_count += 1
+                
+                # Get TTL for age calculation
+                ttl = await client.ttl(key)
+                if ttl > 0:
+                    # Calculate age based on TTL
+                    age = self.settings.cache_ttl - ttl
+                    if oldest_key is None or age > oldest_key[1]:
+                        oldest_key = (key, age)
+                    if newest_key is None or age < newest_key[1]:
+                        newest_key = (key, age)
+            
+            # Get Redis info
+            info = await client.info()
+            
+            return {
+                "total_keys": key_count,
+                "redis_memory_used": info.get("used_memory_human", "unknown"),
+                "redis_connected_clients": info.get("connected_clients", 0),
+                "oldest_entry_age_seconds": oldest_key[1] if oldest_key else None,
+                "newest_entry_age_seconds": newest_key[1] if newest_key else None,
+                "cache_ttl_seconds": self.settings.cache_ttl,
+                "hit_rate": "Not implemented",  # Would need separate tracking
+            }
+            
+        except Exception as e:
+            logger.error(f"Cache stats error: {e}")
+            return {"error": str(e)}
     
     async def close(self):
         """Close Redis connection"""

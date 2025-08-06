@@ -1,0 +1,125 @@
+# LOGODETH Docker Build Context Exclusions
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.env.local
+.env.development
+.env.test
+
+# IDE and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and data
+*.log
+logs/
+data/
+uploads/
+temp/
+tmp/
+.cache/
+
+# Testing
+.tox/
+.coverage
+.pytest_cache/
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+
+# Documentation
+docs/_build/
+docs/build/
+*.md
+!README.md
+!CLAUDE.md
+
+# Development files
+.env.example
+docker-compose.override.yml
+docker-compose.dev.yml
+*.dev.yml
+*.test.yml
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.sass-cache/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# SSL certificates (for security)
+ssl/
+*.pem
+*.key
+*.crt
+
+# Large files that shouldn't be in container
+*.iso
+*.dmg
+*.zip
+*.tar.gz
+*.rar
+
+# Development containers
+.devcontainer/
+
+# Kubernetes
+k8s/
+kubernetes/
+*.yaml
+!docker-compose*.yml
