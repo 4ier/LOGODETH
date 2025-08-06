@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGODETH - Metal Band Logo Recognition Engine</title>
+    <meta name="description" content="AI-powered metal band logo recognition using advanced multimodal AI models">
+    <meta name="keywords" content="metal,band,logo,recognition,AI,machine learning,death metal,black metal">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <!-- Header Section -->
+        <header class="header">
+            <div class="logo-section">
+                <h1 class="logo-title">LOGODETH</h1>
+                <p class="logo-subtitle">Metal Band Logo Recognition Engine</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Introduction -->
+            <section class="intro-section">
+                <div class="quote">
+                    <em>"In the abyss of illegible logos, we bring order to chaos"</em>
+                </div>
+            </section>
+
+            <!-- How it works -->
+            <section class="steps-section">
+                <h2>Decode the Undecipherable</h2>
+                <div class="steps-grid">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <h3>Upload Logo</h3>
+                        <p>Drag & drop or select your metal band logo image</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <h3>AI Analysis</h3>
+                        <p>Our AI models analyze the brutal typography</p>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <h3>Get Results</h3>
+                        <p>Receive band identification with confidence scores</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Upload Section -->
+            <section class="upload-section">
+                <div id="uploadArea" class="upload-area">
+                    <div class="upload-icon">📁</div>
+                    <h3>Drop Your Logo Here</h3>
+                    <p>or click to browse files</p>
+                    <button id="chooseFileBtn" class="choose-file-btn">Choose File</button>
+                    <input type="file" id="fileInput" accept="image/*" hidden>
+                    <div class="upload-info">
+                        <small>Supports JPG, PNG, GIF, WebP • Max 10MB</small>
+                    </div>
+                </div>
+
+                <!-- Preview Area -->
+                <div id="previewArea" class="preview-area" style="display: none;">
+                    <div class="preview-container">
+                        <img id="previewImage" class="preview-image" alt="Logo preview">
+                        <div class="preview-actions">
+                            <button id="analyzeBtn" class="analyze-btn">⚡ ANALYZE LOGO ⚡</button>
+                            <button id="chooseAnotherBtn" class="choose-another-btn">Choose Another</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section id="resultsSection" class="results-section" style="display: none;">
+                <h2>Recognition Results</h2>
+                <div id="resultsContainer" class="results-container">
+                    <!-- Results will be populated by JavaScript -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>&copy; 2024 LOGODETH • Powered by AI • Built for the Metal Community</p>
+                <div class="footer-links">
+                    <a href="https://github.com/4ier/LOGODETH" target="_blank" rel="noopener">GitHub</a>
+                    <a href="/docs/api" target="_blank" rel="noopener">API Docs</a>
+                    <a href="/docs/CONTRIBUTING.md" target="_blank" rel="noopener">Contribute</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
