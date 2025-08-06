@@ -8,4 +8,4 @@ aptPkgs = ["libmagic1", "curl"]
 
 [start]
 # Optimized start command for Railway
-cmd = "python start-railway.py"
+cmd = "python test-app.py"
