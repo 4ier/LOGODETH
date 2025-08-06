@@ -15,10 +15,40 @@ class LLMClient:
     
     def __init__(self):
         self.settings = get_settings()
-        self.openai_client = AsyncOpenAI(api_key=self.settings.openai_api_key)
         
+        # Configure OpenAI client with optional custom base URL
+        openai_kwargs = {
+            "api_key": self.settings.openai_api_key
+        }
+        
+        # Support for OpenRouter or other OpenAI-compatible APIs
+        if self.settings.openai_base_url:
+            openai_kwargs["base_url"] = self.settings.openai_base_url
+            logger.info(f"Using custom OpenAI base URL: {self.settings.openai_base_url}")
+        elif self.settings.use_openrouter:
+            # Default OpenRouter base URL
+            openai_kwargs["base_url"] = "https://openrouter.ai/api/v1"
+            logger.info("Using OpenRouter as AI provider")
+            
+        # Add OpenRouter headers if configured
+        if self.settings.use_openrouter or "openrouter" in (self.settings.openai_base_url or "").lower():
+            openai_kwargs["default_headers"] = {
+                "HTTP-Referer": self.settings.openrouter_site_url or "https://github.com/4ier/LOGODETH",
+                "X-Title": self.settings.openrouter_app_name or "LOGODETH"
+            }
+        
+        self.openai_client = AsyncOpenAI(**openai_kwargs)
+        
+        # Configure Anthropic client with optional custom base URL
         if self.settings.anthropic_api_key:
-            self.anthropic_client = AsyncAnthropic(api_key=self.settings.anthropic_api_key)
+            anthropic_kwargs = {
+                "api_key": self.settings.anthropic_api_key
+            }
+            if self.settings.anthropic_base_url:
+                anthropic_kwargs["base_url"] = self.settings.anthropic_base_url
+                logger.info(f"Using custom Anthropic base URL: {self.settings.anthropic_base_url}")
+            
+            self.anthropic_client = AsyncAnthropic(**anthropic_kwargs)
         else:
             self.anthropic_client = None
     
@@ -50,8 +80,27 @@ Respond in JSON format:
 If you cannot identify the band, still provide your best guess with low confidence."""
 
         try:
+            # Use configured model (supports OpenRouter model names)
+            model = self.settings.openai_model
+            
+            # If using OpenRouter, ensure proper model format
+            if self.settings.use_openrouter and "/" not in model:
+                # Convert standard OpenAI model names to OpenRouter format if needed
+                model_mapping = {
+                    "gpt-4o": "openai/gpt-4o",
+                    "gpt-4-vision-preview": "openai/gpt-4-vision-preview",
+                    "gpt-4-turbo": "openai/gpt-4-turbo",
+                    "gpt-4": "openai/gpt-4",
+                    "claude-3-opus": "anthropic/claude-3-opus",
+                    "claude-3-sonnet": "anthropic/claude-3-sonnet",
+                    "claude-3-haiku": "anthropic/claude-3-haiku"
+                }
+                model = model_mapping.get(model, f"openai/{model}")
+            
+            logger.debug(f"Using model: {model}")
+            
             response = await self.openai_client.chat.completions.create(
-                model="gpt-4o",
+                model=model,
                 messages=[
                     {
                         "role": "user",
@@ -126,7 +175,7 @@ If you cannot identify the band, still provide your best guess with low confiden
 
         try:
             response = await self.anthropic_client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model=self.settings.anthropic_model,
                 max_tokens=300,
                 temperature=0.1,
                 messages=[
@@ -248,6 +297,37 @@ If you cannot identify the band, still provide your best guess with low confiden
         
         return result
     
+    def get_provider_info(self) -> Dict[str, Any]:
+        """
+        Get information about configured providers
+        
+        Returns:
+            Dict with provider configuration info
+        """
+        info = {
+            "openai": {
+                "configured": bool(self.settings.openai_api_key),
+                "model": self.settings.openai_model,
+                "base_url": self.settings.openai_base_url,
+                "is_openrouter": self.settings.use_openrouter or bool(self.settings.openai_base_url and "openrouter" in self.settings.openai_base_url.lower())
+            },
+            "anthropic": {
+                "configured": bool(self.settings.anthropic_api_key),
+                "model": self.settings.anthropic_model,
+                "base_url": self.settings.anthropic_base_url
+            }
+        }
+        
+        # Add provider name for display
+        if info["openai"]["is_openrouter"]:
+            info["openai"]["provider_name"] = "OpenRouter"
+        elif info["openai"]["base_url"]:
+            info["openai"]["provider_name"] = "Custom OpenAI-compatible"
+        else:
+            info["openai"]["provider_name"] = "OpenAI"
+            
+        return info
+    
     async def get_provider_health(self) -> Dict[str, bool]:
         """
         Check health status of available providers
@@ -260,8 +340,14 @@ If you cannot identify the band, still provide your best guess with low confiden
         # Test OpenAI
         try:
             # Simple test call with minimal token usage
+            # Use a basic model for health check to minimize cost
+            test_model = self.settings.openai_model
+            if self.settings.use_openrouter:
+                # Use a cheap model for health check on OpenRouter
+                test_model = "openai/gpt-3.5-turbo" if "gpt" in self.settings.openai_model.lower() else self.settings.openai_model
+            
             await self.openai_client.chat.completions.create(
-                model="gpt-4o",
+                model=test_model,
                 messages=[{"role": "user", "content": "test"}],
                 max_tokens=1
             )
@@ -274,7 +360,7 @@ If you cannot identify the band, still provide your best guess with low confiden
         if self.anthropic_client:
             try:
                 await self.anthropic_client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
+                    model=self.settings.anthropic_model,
                     max_tokens=1,
                     messages=[{"role": "user", "content": "test"}]
                 )

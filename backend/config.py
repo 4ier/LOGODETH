@@ -17,9 +17,11 @@ class Settings(BaseSettings):
     # Environment Detection
     environment: str = Field(default="development", description="Environment: development, production, testing")
     
-    # API Keys
-    openai_api_key: str = Field(..., description="OpenAI API key for GPT-4V")
+    # API Keys and Base URLs
+    openai_api_key: str = Field(..., description="OpenAI API key or OpenRouter API key")
+    openai_base_url: Optional[str] = Field(default=None, description="Custom base URL for OpenAI-compatible APIs (e.g., OpenRouter)")
     anthropic_api_key: Optional[str] = Field(default=None, description="Anthropic API key for Claude Vision")
+    anthropic_base_url: Optional[str] = Field(default=None, description="Custom base URL for Anthropic-compatible APIs")
     
     # Redis Configuration
     redis_url: str = Field(default="redis://localhost:6379", description="Redis connection URL")
@@ -38,8 +40,11 @@ class Settings(BaseSettings):
     cors_origins: List[str] = Field(default_factory=lambda: ["http://localhost:8000", "http://localhost:3000", "http://127.0.0.1:8000"], description="Allowed CORS origins")
     
     # AI Provider Configuration
-    openai_model: str = Field(default="gpt-4o", description="OpenAI model to use")
+    openai_model: str = Field(default="gpt-4o", description="OpenAI model to use (or OpenRouter model like openai/gpt-4-vision-preview)")
     anthropic_model: str = Field(default="claude-3-5-sonnet-20241022", description="Anthropic model to use")
+    use_openrouter: bool = Field(default=False, description="Enable OpenRouter integration")
+    openrouter_site_url: Optional[str] = Field(default=None, description="Your site URL for OpenRouter (optional)")
+    openrouter_app_name: Optional[str] = Field(default="LOGODETH", description="Your app name for OpenRouter (optional)")
     max_tokens: int = Field(default=300, ge=50, le=1000, description="Max tokens for AI responses")
     temperature: float = Field(default=0.1, ge=0.0, le=1.0, description="AI response temperature")
     ai_timeout: int = Field(default=60, ge=10, le=300, description="AI API timeout in seconds")
