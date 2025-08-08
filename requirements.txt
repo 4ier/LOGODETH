@@ -1,31 +1,7 @@
-# LOGODETH Railway Deployment Requirements
-# Minimal dependencies optimized for Railway platform
-
-# Core Web Framework
+# Minimal requirements for Railway
 fastapi==0.104.1
-uvicorn==0.24.0
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
 python-multipart==0.0.6
-gunicorn==21.2.0
-
-# AI APIs (no version conflicts)
-openai>=1.0.0
-anthropic>=0.7.0
-
-# Essential Image Processing
-pillow==10.0.1
-python-magic==0.4.27
-
-# Caching (without C extensions that may fail)
-redis==5.0.1
-
-# Configuration
-python-dotenv==1.0.0
-pydantic>=2.4.0
-pydantic-settings>=2.0.0
-
-# HTTP Client
-httpx==0.25.0
-aiofiles==23.2.1
-
-# Minimal Logging
 loguru==0.7.2
