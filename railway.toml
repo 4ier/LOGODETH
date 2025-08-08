@@ -5,7 +5,7 @@ builder = "nixpacks"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "always"
-startCommand = "python start-railway.py"
+startCommand = "python main.py"
 
 [env]
 LOGODETH_ENVIRONMENT = "production"
